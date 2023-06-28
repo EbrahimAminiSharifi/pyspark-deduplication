@@ -1,8 +1,9 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, monotonically_increasing_id, collect_set, udf
-from pyspark.sql.types import DoubleType, StringType, IntegerType
+from pyspark.sql.types import DoubleType, StringType
 from difflib import SequenceMatcher
 from pyspark.sql.window import Window
+import sys
 
 def string_similarity(str1, str2):
     matcher = SequenceMatcher(None, str1, str2)
@@ -23,7 +24,18 @@ string_similarity_udf = udf(lambda col1, col2: string_similarity(col1, col2), Do
 spark = SparkSession.builder.appName("pulsProject").getOrCreate()
 
 # Task 1: Removing Duplicate Counterparty Data Entries
-df = spark.read.csv('source_1_2.csv', header=True)
+try:
+    df = spark.read.csv('source_1_2.csv', header=True)
+except Exception as e:
+    print("Error: Failed to read the input file.")
+    sys.exit(1)
+
+# Validate input file columns
+required_columns = ['name', 'iban']
+missing_columns = [col for col in required_columns if col not in df.columns]
+if missing_columns:
+    print(f"Error: Input file is missing required columns: {', '.join(missing_columns)}")
+    sys.exit(1)
 
 # Drop duplicates based on name and iban columns
 df_cleaned = df.dropDuplicates(['name', 'iban'])
