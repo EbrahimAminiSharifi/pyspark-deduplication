@@ -28,6 +28,11 @@ def extract_data():
 
 def transform_data():
     spark = SparkSession.builder.appName('EtlTask').getOrCreate()
+    # Retrieve the data from the 'extracted_data' table
+    extracted_data = spark.table("extracted_data")
+
+    # Show the data
+    extracted_data.show()
 
     # Retrieve the input file path from the configuration
 
