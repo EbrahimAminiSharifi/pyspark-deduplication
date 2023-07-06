@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from pyspark.sql import SparkSession
-
+import pymysql as mysql
 
 default_args = {
     'start_date': datetime(2023, 7, 6),
@@ -40,10 +40,10 @@ def transform_data():
     df_no_duplicates = df.dropDuplicates()
 
     # Replace <transformed_file_path> with the path where you want to save the transformed data
-    transformed_file_path = '/home/administrator/sampelfiles/cleaned_file.csv'
+    transformed_file_path = '/home/administrator/samplefiles/cleaned_file.csv'
 
     # Save the transformed data as a CSV file
-    df_no_duplicates.collasec(1).write.csv(transformed_file_path, header=True, mode='overwrite')
+    df_no_duplicates.coalesce(1).write.csv(transformed_file_path, header=True, mode='overwrite')
 
     # Pass the transformed file path to the next DAG
     return transformed_file_path
@@ -58,7 +58,7 @@ def load_data():
     mysql_table = 'tbltest'
 
     # Establish MySQL connection
-    connection = pymysql.connect(
+    connection = mysql.connect(
         host='192.168.110.166',
         port='3306',
         user='sa',
