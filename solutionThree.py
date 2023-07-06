@@ -1,39 +1,30 @@
-from difflib import SequenceMatcher
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, collect_set,substring
-from pyspark.sql.functions import udf,monotonically_increasing_id
-from pyspark.sql.types import DoubleType,StringType
-from pyspark.sql.window import Window
+from pyspark.sql.functions import levenshtein, col, lit, collect_list, struct
 
-def string_similarity(str1, str2):
-    matcher = SequenceMatcher(None, str1, str2)
-    similarity_ratio = matcher.ratio()
-    return similarity_ratio
+# Create a Spark Session
+spark = SparkSession.builder.appName("duplicate_removal").getOrCreate()
 
-# Create a SparkSession
-spark = SparkSession.builder.getOrCreate()
+# Load the data from the CSV file
+df = spark.read.format('csv').option('header', 'true').load('source_1_2.csv')
 
-# Task 1: Removing Duplicate Counterparty Data Entries
-df = spark.read.csv('source_1_2.csv', header=True)
+# Task 1: Remove duplicates based on 'id'
+df = df.dropDuplicates(['id'])
 
-# Drop duplicates based on name and iban columns
-df_cleaned = df.dropDuplicates(['name', 'iban'])
+# Save the cleaned data to a new CSV file
+df.write.csv('cleaned_data.csv', header=True,)
 
-# Assign unique 'id' to any duplicated rows
-df_cleaned = df_cleaned.withColumn('id', monotonically_increasing_id())
+# Task 2: Identify and link similar counterparties based on 'name' and 'iban'
+# Note: This is a naive implementation with O(n^2) complexity, so it won't scale well for large data
 
-# Save the cleaned DataFrame to a new CSV file
-df_cleaned.coalesce(1).write.csv("cleaned_file.csv", header=True, mode='overwrite')
+df = df.withColumn("name_iban", df["name"] + df["iban"])
+linked_df = df.alias("df1").join(df.alias("df2"), levenshtein(col("df1.name_iban"), col("df2.name_iban")) <= 3)
 
-df_cleaned=df_cleaned.withColumn("newIban",substring(col("iban"),1,17))
+# Group by id and aggregate all linked names and ibans
+linked_df = linked_df.groupby("df1.id").agg(collect_list(struct("df2.name", "df2.iban")).alias("linked_counterparts"))
 
-window_spec = Window.partitionBy("newIban")
-df_with_collect_list = df_cleaned.withColumn("names",
-                                            collect_set(col("name")).over(window_spec).cast(StringType()))
-df_with_collect_list = df_with_collect_list.withColumn("ibans",
-                                            collect_set(col("iban")).over(window_spec).cast(StringType()))
+linked_df.show(20)
+# Save the final data to a new CSV file
+#linked_df.write.csv('final_data.csv', header=True)
 
-
-df_with_collect_list.coalesce(1).write.csv('linked_file3.csv', header=True, mode='overwrite')
-
+# Stop the Spark Session
 spark.stop()
