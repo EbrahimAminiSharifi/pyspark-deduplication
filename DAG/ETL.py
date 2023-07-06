@@ -17,7 +17,7 @@ def extract_data():
     spark = SparkSession.builder.appName('EtlTask').getOrCreate()
 
     # Replace <csv_file_path> with the path of your CSV file
-    csv_file_path = '/home/administrator/samplefiles/sample.csv'
+    csv_file_path = '/opt/airflow/logs/sample.csv'
 
     # Read the CSV file into a DataFrame
     df = spark.read.csv(csv_file_path, header=True, inferSchema=True)
@@ -40,7 +40,7 @@ def transform_data():
     df_no_duplicates = df.dropDuplicates()
 
     # Replace <transformed_file_path> with the path where you want to save the transformed data
-    transformed_file_path = '/home/administrator/samplefiles/cleaned_file.csv'
+    transformed_file_path = '/opt/airflow/logs/cleaned_file.csv'
 
     # Save the transformed data as a CSV file
     df_no_duplicates.coalesce(1).write.csv(transformed_file_path, header=True, mode='overwrite')
