@@ -54,9 +54,10 @@ def transform_data():
     return transformed_file_path
 
 
-def load_data():
+def load_data(**kwargs):
     # Retrieve the transformed file path from the previous task's output
-    transformed_file_path = "{{ task_instance.xcom_pull(task_ids='transform_data') }}"
+    task_instance = kwargs['task_instance']
+    transformed_file_path = task_instance.xcom_pull(task_ids='transform_data_task')
 
     # Define the MySQL connection details
 
@@ -78,7 +79,7 @@ def load_data():
             cursor.execute(truncate_query)
 
             # Load data from the transformed file into the MySQL table
-            load_query =  "LOAD DATA INFILE "+transformed_file_path+ "INTO TABLE "+mysql_table "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' IGNORE 1 ROWS"
+            load_query =  "LOAD DATA INFILE "+transformed_file_path+ "INTO TABLE "+mysql_table+ "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' IGNORE 1 ROWS"
             cursor.execute(load_query)
 
         connection.commit()
