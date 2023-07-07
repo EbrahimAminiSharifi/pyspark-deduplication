@@ -68,31 +68,33 @@ def load_data(**kwargs):
 
 
 
-    mysql_url = "jdbc:mysql://192.168.110.166:3306>/test"
-    mysql_table = "tbltest"
-    mysql_properties = {
-        "user": "sa",
-        "password": "zZ123*321",
-        "driver": "com.mysql.jdbc.Driver"
-    }
+
     df = spark.read.csv(transformed_file_path, header=True, inferSchema=True)
 
 
     # Insert data row by row
-    df.foreachPartition(lambda rows: insert_rows(rows, mysql_url, mysql_table, mysql_properties))
+    df.foreachPartition(lambda rows: insert_rows(rows))
 
 
-def insert_rows(rows, mysql_url, mysql_table, mysql_properties):
-        connection = mysql.connect(**mysql_properties)
-        cursor = connection.cursor()
+def insert_rows(rows):
+    connection = mysql.connect(
+        host='192.168.110.166',
+        port=3306,
+        user='sa',
+        password='zZ123*321',
+        db='test'
+    )
+    mysql_table = 'tbltest'
+    cursor = connection.cursor()
 
-        insert_query = f"INSERT INTO {mysql_table} (id, name, iban) VALUES (%s, %s, %s)"
-        for row in rows:
-            cursor.execute(insert_query, (row.id, row.name, row.iban))
+    insert_query = f"INSERT INTO {mysql_table} (id, name, iban) VALUES (%s, %s, %s)"
+    for row in rows:
+        cursor.execute(insert_query, (row.id, row.name, row.iban))
 
-        connection.commit()
-        cursor.close()
-        connection.close()
+    connection.commit()
+    cursor.close()
+    connection.close()
+
 
 
 extract_data_task = PythonOperator(
