@@ -65,7 +65,7 @@ def load_data():
     # Establish MySQL connection
     connection = mysql.connect(
         host='192.168.110.166',
-        port='3306',
+        port=3306,
         user='sa',
         password='zZ123*321',
         database='test'
@@ -78,14 +78,7 @@ def load_data():
             cursor.execute(truncate_query)
 
             # Load data from the transformed file into the MySQL table
-            load_query = f"""
-                LOAD DATA INFILE '{transformed_file_path}'
-                INTO TABLE {mysql_table}
-                FIELDS TERMINATED BY ','
-                ENCLOSED BY '"'
-                LINES TERMINATED BY '\n'
-                IGNORE 1 ROWS
-            """
+            load_query =  "LOAD DATA INFILE "+transformed_file_path+ "INTO TABLE "+mysql_table "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' IGNORE 1 ROWS"
             cursor.execute(load_query)
 
         connection.commit()
