@@ -93,7 +93,7 @@ def insert_rows(rows):
     mysql_table = 'tbltest'
     cursor = connection.cursor()
 
-    insert_query = f"INSERT INTO {mysql_table} (id, name, iban) VALUES (%s, %s, %s)"
+    insert_query = f"INSERT INTO {mysql_table}  (id, name, iban) VALUES (%s, %s, %s)"
     for row in rows:
         cursor.execute(insert_query, (row.ID, row.Name, row.IBAN))
 
