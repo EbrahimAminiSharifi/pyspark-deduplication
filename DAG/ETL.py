@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import monotonically_increasing_id
+
 
 import pymysql as mysql
 
@@ -42,12 +44,16 @@ def transform_data():
     # Read the transformed data from the input file into a DataFrame
    # df = spark.read.csv(input_file_path, header=True, inferSchema=True)
 
+
     # Remove duplicates
-    df_no_duplicates = df.dropDuplicates()
+    df_cleaned = df.dropDuplicates(['Name', 'IBAN'])
+
 
     # Replace <transformed_file_path> with the path where you want to save the transformed data
     transformed_file_path = '/opt/airflow/logs/cleaned_file.csv'
 
+    # Assign unique 'id' to any duplicated rows
+    df_no_duplicates = df_no_duplicates.withColumn('ID', monotonically_increasing_id())
     # Save the transformed data as a CSV file
     df_no_duplicates.coalesce(1).write.csv(transformed_file_path, header=True, mode='overwrite')
 
@@ -73,7 +79,7 @@ def load_data(**kwargs):
 
 
     # Insert data row by row
-    df.foreachPartition(lambda rows: insert_rows(rows))
+    df.foreachPartition(lambda rows: print(rows))
 
 
 def insert_rows(rows):
@@ -89,7 +95,7 @@ def insert_rows(rows):
 
     insert_query = f"INSERT INTO {mysql_table} (id, name, iban) VALUES (%s, %s, %s)"
     for row in rows:
-        cursor.execute(insert_query, (row.id, row.name, row.iban))
+        cursor.execute(insert_query, (row.ID, row.Name, row.IBAN))
 
     connection.commit()
     cursor.close()
