@@ -76,10 +76,11 @@ def load_data(**kwargs):
 
 
     df = spark.read.csv(transformed_file_path, header=True, inferSchema=True)
+    rows=df.collect();
 
 
     # Insert data row by row
-    df.foreachPartition(lambda rows: print(rows))
+    insert_rows(rows)
 
 
 def insert_rows(rows):
@@ -95,7 +96,10 @@ def insert_rows(rows):
 
     insert_query = f"INSERT INTO {mysql_table}  (id, name, iban) VALUES (%s, %s, %s)"
     for row in rows:
-        cursor.execute(insert_query, (row.ID, row.Name, row.IBAN))
+        try:
+         cursor.execute(insert_query, (row.ID, row.Name, row.IBAN))
+        except Exception as e:
+            print(row)
 
     connection.commit()
     cursor.close()
