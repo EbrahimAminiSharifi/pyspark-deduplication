@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from pyspark.sql import SparkSession
+
 import pymysql as mysql
 
 default_args = {
@@ -55,36 +56,42 @@ def transform_data():
 
 
 def load_data(**kwargs):
+
+    spark = SparkSession.builder.appName('EtlTask').getOrCreate()
+
     # Retrieve the transformed file path from the previous task's output
     task_instance = kwargs['task_instance']
     transformed_file_path = task_instance.xcom_pull(task_ids='transform_data_task')
 
     # Define the MySQL connection details
 
-    mysql_table = 'tbltest'
 
-    # Establish MySQL connection
-    connection = mysql.connect(
-        host='192.168.110.166',
-        port=3306,
-        user='sa',
-        password='zZ123*321',
-        database='test'
-    )
 
-    try:
-        with connection.cursor() as cursor:
-            # Truncate the table before loading data
-            truncate_query = f"TRUNCATE TABLE {mysql_table}"
-            cursor.execute(truncate_query)
 
-            # Load data from the transformed file into the MySQL table
-            load_query =  "LOAD DATA INFILE "+transformed_file_path+ "INTO TABLE "+mysql_table+ "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' IGNORE 1 ROWS"
-            cursor.execute(load_query)
+    mysql_url = "jdbc:mysql://192.168.110.166:3306>/test"
+    mysql_table = "tbltest"
+    mysql_properties = {
+        "user": "sa",
+        "password": "zZ123*321",
+        "driver": "com.mysql.jdbc.Driver"
+    }
+    df = spark.read.csv(transformed_file_path, header=True, inferSchema=True)
+
+
+    # Insert data row by row
+    df.foreachPartition(lambda rows: insert_rows(rows, mysql_url, mysql_table, mysql_properties))
+
+
+def insert_rows(rows, mysql_url, mysql_table, mysql_properties):
+        connection = mysql.connect(**mysql_properties)
+        cursor = connection.cursor()
+
+        insert_query = f"INSERT INTO {mysql_table} (id, name, iban) VALUES (%s, %s, %s)"
+        for row in rows:
+            cursor.execute(insert_query, (row.id, row.name, row.iban))
 
         connection.commit()
-
-    finally:
+        cursor.close()
         connection.close()
 
 
