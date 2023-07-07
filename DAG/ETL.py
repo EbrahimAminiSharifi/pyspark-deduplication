@@ -46,14 +46,14 @@ def transform_data():
 
 
     # Remove duplicates
-    df_cleaned = df.dropDuplicates(['Name', 'IBAN'])
+    df = df.dropDuplicates(['Name', 'IBAN'])
 
 
     # Replace <transformed_file_path> with the path where you want to save the transformed data
     transformed_file_path = '/opt/airflow/logs/cleaned_file.csv'
 
     # Assign unique 'id' to any duplicated rows
-    df_no_duplicates = df_no_duplicates.withColumn('ID', monotonically_increasing_id())
+    df_no_duplicates = df.withColumn('ID', monotonically_increasing_id())
     # Save the transformed data as a CSV file
     df_no_duplicates.coalesce(1).write.csv(transformed_file_path, header=True, mode='overwrite')
 
